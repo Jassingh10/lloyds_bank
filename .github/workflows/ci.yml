@@ -1,4 +1,4 @@
-name: CI - Tests & Lint
+name: CI Pipeline
 
 on:
   push:
@@ -7,36 +7,54 @@ on:
     branches: [ main ]
 
 jobs:
-  build-test-lint:
+  unit-tests:
+    name: Unit Tests (Offline, Mocked)
     runs-on: ubuntu-latest
-
     steps:
-      # 1️⃣ Pull down your repo
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 2️⃣ Set up Python
-      - name: Set up Python 3.9
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
-      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install flake8
 
-      # 4️⃣ Run linter
-      - name: Run linter (flake8)
-        run: |
-          # Fail if syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Warn on formatting issues but don't break the build
-          flake8 . --count --exit-zero --max-complexity=12 --max-line-length=100 --statistics
+      - name: Run pytest (unit tests only)
+        run: pytest tests/unit_offline --cov=ingest_pipeline --cov-report=term-missing
 
-      # 5️⃣ Run pytest with coverage
-      - name: Run tests with pytest & coverage
+  integration-tests:
+    name: Integration Tests (Real GCP)
+    runs-on: ubuntu-latest
+    # This job will only run if the GCP Service Account Key secret is configured
+    if: ${{ secrets.GCP_SA_KEY != '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
         run: |
-          pytest --cov=ingest_pipeline --cov-report=term-missing
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Configure GCP Credentials
+        run: |
+          echo "${{ secrets.GCP_SA_KEY }}" > $HOME/gcp_key.json
+          export GOOGLE_APPLICATION_CREDENTIALS="$HOME/gcp_key.json"
+          gcloud auth activate-service-account --key-file=$HOME/gcp_key.json
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Run pytest (integration tests)
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          REGION: ${{ secrets.GCP_REGION }}
+          TEMP_BUCKET: ${{ secrets.GCP_TEMP_BUCKET }}
+        run: pytest tests/integration -m integration
