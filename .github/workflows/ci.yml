@@ -1,0 +1,42 @@
+name: CI - Tests & Lint
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Pull down your repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Set up Python
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      # 3️⃣ Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install flake8
+
+      # 4️⃣ Run linter
+      - name: Run linter (flake8)
+        run: |
+          # Fail if syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Warn on formatting issues but don't break the build
+          flake8 . --count --exit-zero --max-complexity=12 --max-line-length=100 --statistics
+
+      # 5️⃣ Run pytest with coverage
+      - name: Run tests with pytest & coverage
+        run: |
+          pytest --cov=ingest_pipeline --cov-report=term-missing

@@ -1,0 +1,14 @@
+customer_id,first_name,last_name,email,creation_date
+1,John,Doe,john.doe@example.com,2020-06-10 00:00:00
+2,Jane,Smith,jane.smith@example.com,2020-07-15 00:00:00
+3,Alice,Johnson,alice.johnson@example.com,2021-01-25 00:00:00
+,Smith,Tom,test@example.com,2021-01-25 00:00:00
+5,John,Doe,john.doe@example.com,2020-06-10 00:00:00
+6,Jane,Smith,jane.smith@example.com,2020-07-15 00:00:00
+7,Alice,Johnson,alice.johnson@example.com,2021-01-25 00:00:00
+8,Smith,Tom,test@example.com,2021-01-25 00:00:00
+9,John,Doe,john.doe@example.com,2020-06-10 00:00:00
+10,Jane,Smith,jane.smith@example.com,2020-07-15 00:00:00
+31,Alice,Johnson,alice.johnson@example.com,2021-01-25 00:00:00
+11,Smith,Tom,test@example.com,2021-01-25 00:00:00
+1,John,Doe,john.doe@example.com,2020-06-10 00:00:04
