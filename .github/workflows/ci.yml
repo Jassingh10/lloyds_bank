@@ -7,8 +7,11 @@ on:
     branches: [ main ]
 
 jobs:
+  # ------------------------
+  # 1️⃣ Unit Tests (always run)
+  # ------------------------
   unit-tests:
-    name: Unit Tests (Offline, Mocked)
+    name: Unit Tests (Offline)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,28 +20,38 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run pytest (unit tests only)
-        run: pytest tests/unit_offline --cov=ingest_pipeline --cov-report=term-missing
+      - name: Run Unit Tests
+        run: python -m pytest -m unit --cov=ingest_pipeline --cov-report=term-missing
 
+  # ------------------------
+  # 2️⃣ Integration Tests (only if secrets exist)
+  # ------------------------
   integration-tests:
-    name: Integration Tests (Real GCP)
+    name: Integration Tests (GCP)
     runs-on: ubuntu-latest
-    # This job will only run if the GCP Service Account Key secret is configured
-    if: ${{ secrets.GCP_SA_KEY != '' }}
-
+    needs: unit-tests  # only run if unit tests pass
     steps:
+      - name: Check for GCP credentials
+        run: |
+          if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
+            echo "⚠️ No GCP_SA_KEY secret set. Skipping integration tests."
+            exit 0
+          fi
+
       - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
@@ -52,9 +65,10 @@ jobs:
           gcloud auth activate-service-account --key-file=$HOME/gcp_key.json
           gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Run pytest (integration tests)
+      - name: Run Integration Tests
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           REGION: ${{ secrets.GCP_REGION }}
+          RAW_BUCKET: ${{ secrets.GCP_RAW_BUCKET }}
           TEMP_BUCKET: ${{ secrets.GCP_TEMP_BUCKET }}
-        run: pytest tests/integration -m integration
+        run: python -m pytest -m integration
