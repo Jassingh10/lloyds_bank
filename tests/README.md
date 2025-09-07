@@ -1,68 +1,64 @@
-**real GCP Beam → BigQuery** tests.
----
-## :test_tube: Running Integration Tests (Real GCP)
-Our integration tests in tests/integration/test_pipeline_gcp.py run the **actual** ingestion pipeline (ingest_pipeline.py) against Google Cloud Platform:
-- Uploads **test CSVs** to your Raw GCS bucket.
-- Runs **Apache Beam** (DirectRunner or DataflowRunner).
-- Writes to **BigQuery** tables in your dataset.
-- Asserts that data is correctly ingested.
-### :warning: Prerequisites
-You must have the following **ready** in your GCP project:
-1. **GCP Project** with:
-   - BigQuery, Dataflow, and Cloud Storage APIs enabled.
-2. **GCS buckets**:
-   - Raw data bucket (RAW_BUCKET)
-   - Temp bucket (TEMP_BUCKET) for Beam temporary files.
-3. **BigQuery dataset** — default is raw_data_dataset (can override using BQ_DATASET env var).
-4. **Service account / ADC**:
-   - With roles: roles/bigquery.admin, roles/storage.admin, roles/dataflow.admin
-   - Locally: run 
-     
+## :test_tube: Testing Strategy
+This project has **two distinct test types**:
+### :one: Unit Tests
+- **Location:** tests/unit_offline/
+- **Purpose:** 
+  - Test only our pipeline’s logic and helpers (parse_csv_line, run(), etc.).
+  - All Google Cloud services (BigQuery, GCS, Dataflow) are **mocked**.
+- **Benefits:** 
+  - Fast — run in seconds 
+  - Offline — no internet or GCP required 
+  - Runs in **all environments** (local, CI/CD, forks, PRs)
+- **Run locally:** 
+  
 bash
-     gcloud auth application-default login
-     
-     This updates your local ADC to be used by the BigQuery & Storage clients.
+  pytest -m unit --cov=ingest_pipeline --cov-report=term-missing
+  
+- **Run in CI:** 
+  Always runs on every push/PR — this is our main quality gate.
 ---
-### :small_blue_diamond: Setting Required Environment Variables
-Before running, export these environment variables:
+### :two: Integration Tests
+- **Location:** tests/integration/
+- **Purpose:** 
+  - Run full **Apache Beam → BigQuery** ingestion paths end-to-end in a **real GCP environment**.
+  - Upload test CSVs to GCS and verify rows appear in BigQuery.
+  - Validate schema, transformations, and Dataflow execution.
+- **Requirements:** 
+  - GCP project with required APIs enabled (BigQuery, Storage, Dataflow)
+  - Raw & temp buckets available
+  - Service account key with roles:
+    - roles/bigquery.admin
+    - roles/storage.admin
+    - roles/dataflow.admin
+  - Locally: 
+    
 bash
-export PROJECT_ID="your-gcp-project-id"
-export REGION="europe-west2"                    # or your GCP region
-export RAW_BUCKET="your-raw-data-bucket"        # without gs:// prefix
-export TEMP_BUCKET="your-temp-bucket"           # without gs:// prefix
-# Optional:
-# export BQ_DATASET="raw_data_dataset"
----
-### :small_blue_diamond: Running Integration Tests Locally
-**Run all integration tests only:**
+    gcloud auth application-default login
+    export PROJECT_ID=<project-id>
+    export RAW_BUCKET=<bucket>
+    export TEMP_BUCKET=<bucket>
+    
+- **Run locally:** 
+  
 bash
-pytest -m integration
-**Run both unit & integration tests together:**
-bash
-pytest -m "unit or integration"
+  pytest -m integration
+  
+- **Run in CI/CD:** 
+  :x: Not run as part of the main CI pipeline. 
+  :white_check_mark: Run manually via a dedicated **Integration Workflow** or locally with credentials.
 ---
-### :small_blue_diamond: Running via Helper Script
-We have a convenience script run_integration_test.sh to ensure the right Python is used:
-bash
-chmod +x run_integration_test.sh
-./run_integration_test.sh
-This will:
-1. Install dependencies
-2. Run only the @pytest.mark.integration tests
+## :vertical_traffic_light: CI/CD Policy
+- The **main CI pipeline** (.github/workflows/ci.yml) runs **only unit tests**:
+  - Keeps builds **fast** 
+  - Avoids GCP dependency & credentials in every run 
+  - Prevents accidental costs & flaky cloud test failures
+- **Integration tests** are run:
+  - Manually (workflow_dispatch) in GitHub Actions **when needed**
+  - Locally by engineers before major releases or changes in GCP-specific code.
 ---
-### :small_blue_diamond: Expected Behaviour
-- A **random BigQuery table name** is created for each integration test (no data collisions).
-- After tests run, you should see:
-  - A customer_raw_inttest_* table populated from the customer CSV upload
-  - A transaction_raw_inttest_* table populated from the transaction CSV upload
-- Tests will **skip automatically** if any required env var is missing.
----
-### :small_blue_diamond: In CI/CD
-We **do not** run integration tests on every push unless GCP credentials are present. 
-Configure the following secrets in your GitHub repository to enable:
-- GCP_SA_KEY — Service account JSON key
-- GCP_PROJECT_ID
-- GCP_REGION
-- GCP_RAW_BUCKET
-- GCP_TEMP_BUCKET
+## :bulb: Why This Approach
+- **Fast feedback:** Unit tests run on every commit — developers get results in minutes.
+- **Reliability:** CI builds won’t fail from GCP network/auth issues.
+- **Security:** GCP credentials aren’t stored/exposed in every CI job.
+- **Flexibility:** Integration tests can still be run whenever real GCP validation is needed.
 ---
