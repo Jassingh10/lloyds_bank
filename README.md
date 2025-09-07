@@ -15,6 +15,7 @@
 ---
 ## Overview
 This project implements a **data ingestion pipeline** to load CSV data from **local storage** into **Google Cloud Storage (GCS)** and subsequently process and load it into **BigQuery** using **Dataflow (Apache Beam)**.
+
 Local CSV Files
    │
    ▼  Upload
@@ -31,6 +32,7 @@ BigQuery Staging Tables
    │
    ▼  Aggregate/Analyze
 BigQuery Materialized Views
+
 ---
 ## Features
 - Bulk loads CSV files from local storage to GCS
