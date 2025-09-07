@@ -60,7 +60,7 @@ Add **end-to-end observability**:
   - **Deadletter dashboard**
   - Alert if >X% of batch goes to deadletter
 ---
-## **:arrows_counterclockwise: Updated Automated Flow**
+## **:arrows_counterclockwise: Updated Automated Flow if Beam was required**
 [Raw CSV lands in GCS]
       |
       v
@@ -98,3 +98,22 @@ Add **end-to-end observability**:
    - Failed Dataflow → PagerDuty/Slack
    - Too many deadletters → Slack report
 ---
+## **:arrows_counterclockwise: My Preffered approach remove beam and have composer deal woith eveything **
+[Raw CSV lands in GCS]
+      |
+      v
+[Composer checks landing bucket]
+      |
+      v
+[Python code in composer to use name of file against config file]
+      |
+      v
+[Trigger → BQ Raw Tables]
+      |
+      v
+[Composer DAG]
+   • Run MERGE raw → staging/deadletter
+   • Refresh Materialized Views
+      |
+      v
+[Analytical Layer Updated]
